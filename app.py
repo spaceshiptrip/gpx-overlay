@@ -21,9 +21,15 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Track sizing
+    sizing_mode = st.radio("Track sizing", options=["fit_width", "fixed_height", "fixed_width"], index=0, horizontal=True)
+    track_height_px = st.number_input("Track height (px) [if fixed_height]", value=400, min_value=50, max_value=5000, step=10)
+    track_width_px = st.number_input("Track width (px) [if fixed_width]", value=1200, min_value=50, max_value=10000, step=10)
+
+    st.markdown("---")
+
     # Elevation graph
     show_elev_graph = st.checkbox("Show Elevation Graph", value=True)
-    # Labels reflect current unit selection
     show_graph_label_distance = st.checkbox(f"Show Graph Label: Distance ({'mi' if unit_system=='imperial' else 'km'})", value=True)
     show_graph_label_elevation = st.checkbox(f"Show Graph Label: Elevation ({'ft' if unit_system=='imperial' else 'm'})", value=True)
     axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
@@ -78,6 +84,11 @@ if uploaded is not None:
         show_title=show_title,
         show_subtitle=show_subtitle,
 
+        # track sizing
+        track_sizing_mode=sizing_mode,
+        track_height_px=int(track_height_px),
+        track_width_px=int(track_width_px),
+
         # graph
         show_elev_graph=show_elev_graph,
         show_graph_label_distance=show_graph_label_distance,
@@ -122,7 +133,8 @@ if uploaded is not None:
 
     if st.button("Generate Overlay Image"):
         png_bytes = generate_overlay_image(uploaded.read(), opts)
-        st.image(png_bytes, caption="Overlay Preview", use_column_width=True)
+        st.image(png_bytes, caption="Overlay Preview", use_container_width=True)
+
         st.download_button("⬇️ Download PNG", data=png_bytes, file_name="gpx_overlay.png", mime="image/png")
 
 st.markdown("---")
