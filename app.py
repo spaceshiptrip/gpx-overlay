@@ -60,6 +60,25 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Line styles
+    st.subheader("Line styles")
+    line_width_track = st.number_input("Track line width", value=3.0, min_value=0.1, max_value=20.0, step=0.1)
+    color_track = st.color_picker("Track line color", value="#000000")
+    line_width_elev = st.number_input("Elevation line width", value=2.0, min_value=0.1, max_value=20.0, step=0.1)
+    color_elev = st.color_picker("Elevation line color", value="#1f77b4")
+
+    # Glow styles
+    st.subheader("Glow (stroke)")
+    show_glow_track = st.checkbox("Glow on track line", value=False)
+    glow_color_track = st.color_picker("Glow color (track)", value="#FFFFFF")
+    glow_width_track = st.number_input("Glow width (track)", value=6.0, min_value=0.0, max_value=40.0, step=0.5)
+
+    show_glow_elev = st.checkbox("Glow on elevation line", value=False)
+    glow_color_elev = st.color_picker("Glow color (elevation)", value="#FFFFFF")
+    glow_width_elev = st.number_input("Glow width (elevation)", value=6.0, min_value=0.0, max_value=40.0, step=0.5)
+
+    st.markdown("---")
+
     # Run info panel
     show_run_info = st.checkbox("Show Run Information", value=True)
     info_fs = st.number_input("Run Info Font Size", value=24, step=1, min_value=6, max_value=120)
@@ -137,6 +156,20 @@ if uploaded is not None:
         show_track_peak=show_track_peak,
         show_track_peak_marker=show_track_peak_marker,
         show_track_peak_text=show_track_peak_text,
+
+        # line styles
+        line_width_track=float(line_width_track),
+        color_track=color_track,
+        line_width_elev=float(line_width_elev),
+        color_elev=color_elev,
+
+        # glows
+        show_glow_track=show_glow_track,
+        glow_color_track=glow_color_track,
+        glow_width_track=float(glow_width_track),
+        show_glow_elev=show_glow_elev,
+        glow_color_elev=glow_color_elev,
+        glow_width_elev=float(glow_width_elev),
 
         # run info block
         show_run_info=show_run_info,

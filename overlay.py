@@ -38,7 +38,7 @@ class OverlayOptions:
     show_graph_axes_lines: bool = True
     grid: bool = False
 
-    # NEW: tick visibility controls
+    # Tick visibility controls
     show_x_ticks: bool = True
     show_y_ticks: bool = True
     show_x_ticklabels: bool = True
@@ -49,7 +49,7 @@ class OverlayOptions:
     show_peak_marker: bool = True
     show_peak_text: bool = True
 
-    # NEW: Peak controls for GPX track plot
+    # Peak controls for GPX track plot
     show_track_peak: bool = True
     show_track_peak_marker: bool = True
     show_track_peak_text: bool = True
@@ -91,9 +91,20 @@ class OverlayOptions:
     info_fontstyle: str = "normal"
     info_fontweight: str = "bold"
 
-    # Lines
+    # Line styles
     line_width_track: float = 3.0
     line_width_elev: float = 2.0
+    color_track: str = "#000000"   # black
+    color_elev: str = "#1f77b4"    # matplotlib default blue
+
+    # Glow styles (per plot)
+    show_glow_track: bool = False
+    glow_color_track: str = "#FFFFFF"
+    glow_width_track: float = 6.0
+
+    show_glow_elev: bool = False
+    glow_color_elev: str = "#FFFFFF"
+    glow_width_elev: float = 6.0
 
 
 @dataclass
@@ -184,6 +195,14 @@ def _format_duration(td: dt.timedelta) -> str:
 
 def _feet(m): return m * 3.28084
 def _miles(km): return km * 0.621371
+
+
+def _apply_glow(line, glow_color: str, glow_width: float):
+    """Apply a glow/stroke effect to a Matplotlib line."""
+    try:
+        line.set_path_effects([pe.Stroke(linewidth=glow_width, foreground=glow_color), pe.Normal()])
+    except Exception:
+        pass
 
 
 def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
@@ -283,14 +302,15 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     track_ax.set_xlim(x_min - xpad, x_max + xpad)
     track_ax.set_ylim(y_min - ypad, y_max + ypad)
     track_ax.set_aspect('equal', adjustable='box')
-    track_ax.plot(x, y, linewidth=options.line_width_track)
+    line_track, = track_ax.plot(x, y, linewidth=options.line_width_track, color=options.color_track)
+    if options.show_glow_track:
+        _apply_glow(line_track, options.glow_color_track, options.glow_width_track)
 
     # --- Track peak marker/text ---
     if options.show_track_peak:
         elev_mask = ~np.isnan(elevs)
         if np.any(elev_mask):
             idx = int(np.nanargmax(elevs[elev_mask]))
-            # get original index in full arrays
             valid_indices = np.flatnonzero(elev_mask)
             real_idx = int(valid_indices[idx])
             peak_x = x[real_idx]
@@ -300,7 +320,6 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
                 track_ax.plot([peak_x], [peak_y], marker='o')
             if options.show_track_peak_text:
                 txt = f"{int(round(peak_elev_val))} {'ft' if imperial else 'm'}"
-                # place text with a small offset
                 dx = (x_max - x_min) * 0.01
                 dy = (y_max - y_min) * 0.01
                 tt = track_ax.text(peak_x + dx, peak_y + dy, txt,
@@ -318,7 +337,10 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         elev_ax = fig.add_axes([elev_x0, elev_y0, elev_w_frac, elev_ax_h])
 
         elev_mask = ~np.isnan(elevs)
-        elev_ax.plot(dist_series[elev_mask], elev_series[elev_mask], linewidth=options.line_width_elev)
+        line_elev, = elev_ax.plot(dist_series[elev_mask], elev_series[elev_mask],
+                                  linewidth=options.line_width_elev, color=options.color_elev)
+        if options.show_glow_elev:
+            _apply_glow(line_elev, options.glow_color_elev, options.glow_width_elev)
 
         if options.grid:
             elev_ax.grid(True, alpha=0.3)
