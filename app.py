@@ -6,34 +6,103 @@ st.title("GPX → Social Overlay Image (Track + Elevation + Stats)")
 
 with st.sidebar:
     st.header("Overlay Options")
+
+    # Title / subtitle toggles
+    show_title = st.checkbox("Show Title", value=True)
     title = st.text_input("Title", "My Run")
-    subtitle = st.text_input("Subtitle", "Marathon Training")
-    show_loc = st.checkbox("Show Location", value=True)
-    custom_loc = st.text_input("Custom Location (optional, overrides lat/lon center)", "")
-    show_temp = st.checkbox("Show Temperature", value=True)
-    temp_f = st.number_input("Temperature (°F)", value=68, step=1)
-    width = st.number_input("Image width (px)", value=1920, step=10)
-    height = st.number_input("Image height (px)", value=1080, step=10)
-    dpi = st.number_input("DPI", value=150, step=10)
-    transparent = st.checkbox("Transparent background (for overlay)", value=True)
+    title_fs = st.number_input("Title Font Size", value=48, step=1, min_value=8, max_value=200)
+
+    show_subtitle = st.checkbox("Show Sub Title", value=True)
+    subtitle = st.text_input("Sub Title", "Marathon Training")
+    subtitle_fs = st.number_input("Sub Title Font Size", value=28, step=1, min_value=8, max_value=200)
+
+    st.markdown("---")
+
+    # Elevation graph
+    show_elev_graph = st.checkbox("Show Elevation Graph", value=True)
+    show_graph_label_distance = st.checkbox("Show Graph Label: Distance (km)", value=True)
+    show_graph_label_elevation = st.checkbox("Show Graph Label: Elevation (m)", value=True)
+    axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
     grid = st.checkbox("Show elevation grid", value=False)
 
-st.write("Upload a `.gpx` file. We'll draw a 2D overhead track, plot elevation, and stamp stats.")
+    st.markdown("---")
+
+    # Run info panel
+    show_run_info = st.checkbox("Show Run Information", value=True)
+    info_fs = st.number_input("Run Info Font Size", value=24, step=1, min_value=6, max_value=120)
+
+    show_location = st.checkbox("Show: Location", value=True)
+    label_location = st.checkbox("Label: Location", value=True)
+
+    show_distance = st.checkbox("Show: Distance (miles)", value=True)
+    label_distance = st.checkbox("Label: Distance", value=True)
+
+    show_elev_gain = st.checkbox("Show: Elevation (feet)", value=True)
+    label_elev_gain = st.checkbox("Label: Elevation", value=True)
+
+    show_time = st.checkbox("Show: Time", value=True)
+    label_time = st.checkbox("Label: Time", value=True)
+
+    show_temperature = st.checkbox("Show: Temp (°F)", value=True)
+    label_temperature = st.checkbox("Label: Temp", value=True)
+    temp_f = st.number_input("Temperature (°F, optional)", value=68, step=1)
+
+    st.markdown("---")
+
+    # Canvas / style
+    width = st.number_input("Image width (px)", value=1920, step=10, min_value=320, max_value=10000)
+    height = st.number_input("Image height (px)", value=1080, step=10, min_value=320, max_value=10000)
+    dpi = st.number_input("DPI", value=150, step=10, min_value=72, max_value=600)
+    transparent = st.checkbox("Transparent background (for overlay)", value=True)
+
+st.write("Upload a `.gpx` file. We'll draw a 2D overhead track, optionally plot elevation, and stamp stats.")
 uploaded = st.file_uploader("GPX File", type=["gpx"])
 
 if uploaded is not None:
     opts = OverlayOptions(
+        # titles
         title=title,
         subtitle=subtitle,
-        temperature_f=float(temp_f) if show_temp else None,
-        show_temperature=show_temp,
-        show_location=show_loc,
-        custom_location=custom_loc if custom_loc.strip() else None,
+        show_title=show_title,
+        show_subtitle=show_subtitle,
+
+        # graph
+        show_elev_graph=show_elev_graph,
+        show_graph_label_distance=show_graph_label_distance,
+        show_graph_label_elevation=show_graph_label_elevation,
+        grid=grid,
+
+        # run info block
+        show_run_info=show_run_info,
+
+        # fields + labels
+        show_location=show_location,
+        label_location=label_location,
+
+        show_distance=show_distance,
+        label_distance=label_distance,
+
+        show_elev_gain=show_elev_gain,
+        label_elev_gain=label_elev_gain,
+
+        show_time=show_time,
+        label_time=label_time,
+
+        show_temperature=show_temperature,
+        label_temperature=label_temperature,
+        temperature_f=float(temp_f) if show_temperature else None,
+
+        # canvas
         width_px=int(width),
         height_px=int(height),
         transparent_bg=transparent,
         dpi=int(dpi),
-        grid=grid,
+
+        # fonts
+        title_fontsize=int(title_fs),
+        subtitle_fontsize=int(subtitle_fs),
+        axes_fontsize=int(axes_fs),
+        info_fontsize=int(info_fs),
     )
 
     if st.button("Generate Overlay Image"):

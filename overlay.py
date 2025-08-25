@@ -12,24 +12,53 @@ from pyproj import Geod, Transformer
 
 @dataclass
 class OverlayOptions:
+    # Titles
     title: str = "My Run"
-    subtitle: str = ""
-    temperature_f: Optional[float] = None
-    show_temperature: bool = True
+    subtitle: str = "Marathon Training"
+    show_title: bool = True
+    show_subtitle: bool = True
+
+    # Graph visibility / labels
+    show_elev_graph: bool = True
+    show_graph_label_distance: bool = True   # X-axis label
+    show_graph_label_elevation: bool = True  # Y-axis label
+    grid: bool = False
+
+    # Run info block visibility
+    show_run_info: bool = True
+
+    # Individual run info fields + label toggles
     show_location: bool = True
-    custom_location: Optional[str] = None
+    label_location: bool = True
+
+    show_distance: bool = True
+    label_distance: bool = True  # "Dist " prefix
+
+    show_elev_gain: bool = True
+    label_elev_gain: bool = True  # "Gain " prefix
+
+    show_time: bool = True
+    label_time: bool = True  # "Time " prefix
+
+    show_temperature: bool = True
+    label_temperature: bool = True  # "Temp " prefix
+    temperature_f: Optional[float] = None
+
+    # Canvas / style
     width_px: int = 1920
     height_px: int = 1080
-    margin_px: int = 32
-    line_width_track: float = 3.0
-    line_width_elev: float = 2.0
     transparent_bg: bool = True
     dpi: int = 150
-    label_fontsize: int = 28
+
+    # Fonts
     title_fontsize: int = 48
     subtitle_fontsize: int = 28
-    footer_fontsize: int = 24
-    grid: bool = False
+    axes_fontsize: int = 14
+    info_fontsize: int = 24  # run info text (footer)
+
+    # Lines
+    line_width_track: float = 3.0
+    line_width_elev: float = 2.0
 
 
 @dataclass
@@ -45,8 +74,7 @@ class GPXStats:
 
 
 def _parse_gpx(gpx_bytes: bytes):
-    # Robust parsing: handle bytes -> text for gpxpy
-    # Try utf-8 first, ignore errors if needed
+    # Robust parsing: bytes -> text for gpxpy
     text = gpx_bytes.decode("utf-8", errors="ignore")
     gpx = gpxpy.parse(io.StringIO(text))
     lats, lons, elevs, times = [], [], [], []
@@ -132,12 +160,7 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     stats = _compute_stats(lats, lons, elevs, times)
     x, y = _project_to_mercator(lats, lons)
 
-    track_margin = 0.05
-    x_min, x_max = np.nanmin(x), np.nanmax(x)
-    y_min, y_max = np.nanmin(y), np.nanmax(y)
-    if x_max - x_min < 1e-6: x_max += 1.0
-    if y_max - y_min < 1e-6: y_max += 1.0
-
+    # Distance array for elevation profile
     geod = Geod(ellps='WGS84')
     dists_m = [0.0]
     for i in range(1, len(lats)):
@@ -145,57 +168,109 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         dists_m.append(dists_m[-1] + d)
     dists_km = np.array(dists_m) / 1000.0
 
+    # Figure and layout
     dpi = options.dpi
     fig_w = options.width_px / dpi
     fig_h = options.height_px / dpi
     fig = plt.figure(figsize=(fig_w, fig_h), dpi=dpi)
     fig.patch.set_alpha(0.0 if options.transparent_bg else 1.0)
 
-    gs = fig.add_gridspec(10, 20)
-    ax_title = fig.add_subplot(gs[0, :])
-    ax_track = fig.add_subplot(gs[1:7, :])
-    ax_elev = fig.add_subplot(gs[7:10, :])
+    # GridSpec rows depend on whether elevation graph is shown
+    if options.show_elev_graph:
+        gs = fig.add_gridspec(10, 20)
+        title_rows = (0, 1)   # row 0
+        track_rows = (1, 7)   # rows 1-6
+        elev_rows = (7, 10)   # rows 7-9
+    else:
+        gs = fig.add_gridspec(8, 20)
+        title_rows = (0, 1)   # row 0
+        track_rows = (1, 8)   # rows 1-7
+        elev_rows = None
 
+    ax_title = fig.add_subplot(gs[slice(*title_rows), :])
+    ax_track = fig.add_subplot(gs[slice(*track_rows), :])
     ax_title.axis("off")
-    t = ax_title.text(0.01, 0.65, options.title or "Activity",
-                      fontsize=options.title_fontsize, weight="bold", va="center", ha="left")
-    t.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
-    if options.subtitle:
+
+    # Titles
+    if options.show_title:
+        t = ax_title.text(0.01, 0.65, options.title or "Activity",
+                          fontsize=options.title_fontsize, weight="bold", va="center", ha="left")
+        t.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
+    if options.show_subtitle and options.subtitle:
         s = ax_title.text(0.01, 0.2, options.subtitle,
                           fontsize=options.subtitle_fontsize, va="center", ha="left")
         s.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
 
-    # FIXED: removed stray ')' that caused SyntaxError
+    # Track panel
     ax_track.set_axis_off()
-    xpad = (x_max - x_min) * track_margin
-    ypad = (y_max - y_min) * track_margin
-    ax_track.set_xlim(x_min - xpad, x_max + xpad)
-    ax_track.set_ylim(y_min - ypad, y_max + ypad)
+    x_min, x_max = np.nanmin(x), np.nanmax(x)
+    y_min, y_max = np.nanmin(y), np.nanmax(y)
+    # avoid zero range
+    if x_max - x_min < 1e-6: x_max += 1.0
+    if y_max - y_min < 1e-6: y_max += 1.0
+    pad_x = (x_max - x_min) * 0.05
+    pad_y = (y_max - y_min) * 0.05
+    ax_track.set_xlim(x_min - pad_x, x_max + pad_x)
+    ax_track.set_ylim(y_min - pad_y, y_max + pad_y)
     ax_track.set_aspect('equal', adjustable='box')
     ax_track.plot(x, y, linewidth=options.line_width_track)
 
-    elev_mask = ~np.isnan(elevs)
-    ax_elev.plot(dists_km[elev_mask], elevs[elev_mask], linewidth=options.line_width_elev)
-    if options.grid:
-        ax_elev.grid(True, alpha=0.3)
-    ax_elev.set_xlabel("Distance (km)")
-    ax_elev.set_ylabel("Elevation (m)")
+    # Elevation panel (optional)
+    if options.show_elev_graph:
+        ax_elev = fig.add_subplot(gs[slice(*elev_rows), :])
+        elev_mask = ~np.isnan(elevs)
+        ax_elev.plot(dists_km[elev_mask], elevs[elev_mask], linewidth=options.line_width_elev)
+        if options.grid:
+            ax_elev.grid(True, alpha=0.3)
+        # Axis labels with toggles and font size
+        if options.show_graph_label_distance:
+            ax_elev.set_xlabel("Distance (km)", fontsize=options.axes_fontsize)
+        else:
+            ax_elev.set_xlabel("")
+        if options.show_graph_label_elevation:
+            ax_elev.set_ylabel("Elevation (m)", fontsize=options.axes_fontsize)
+        else:
+            ax_elev.set_ylabel("")
+        # also set tick label sizes consistently
+        ax_elev.tick_params(axis='both', labelsize=options.axes_fontsize)
 
-    distance_mi = _miles(stats.distance_km)
-    gain_ft = _feet(stats.elev_gain_m)
-    dur = _format_duration(stats.duration)
-    location = options.custom_location if options.custom_location else f"{stats.center_lat:.4f}, {stats.center_lon:.4f}"
-    temp_str = f" • Temp {options.temperature_f:.0f}°F" if (options.show_temperature and options.temperature_f is not None) else ""
+    # Footer / run info (optional)
+    if options.show_run_info:
+        # Compose left and right strings with per-field label toggles
+        left = ""
+        if options.show_location:
+            loc_val = f"{stats.center_lat:.4f}, {stats.center_lon:.4f}"
+            left = f"Location: {loc_val}" if options.label_location else loc_val
 
-    footer_left = f"{location}" if options.show_location else ""
-    footer_right = f"Dist {distance_mi:.2f} mi • Gain {gain_ft:.0f} ft • Time {dur}{temp_str}"
+        parts = []
+        if options.show_distance:
+            miles = _miles(stats.distance_km)
+            parts.append((f"Dist {miles:.2f} mi" if options.label_distance else f"{miles:.2f} mi"))
+        if options.show_elev_gain:
+            gain_ft = _feet(stats.elev_gain_m)
+            parts.append((f"Gain {gain_ft:.0f} ft" if options.label_elev_gain else f"{gain_ft:.0f} ft"))
+        if options.show_time:
+            dur = _format_duration(stats.duration)
+            parts.append((f"Time {dur}" if options.label_time else f"{dur}"))
+        if options.show_temperature and options.temperature_f is not None:
+            parts.append((f"Temp {options.temperature_f:.0f}°F" if options.label_temperature else f"{options.temperature_f:.0f}°F"))
 
-    for ax, text, anchor in [(ax_elev, footer_left, 'left'), (ax_elev, footer_right, 'right')]:
-        if text:
-            tx = 0.01 if anchor == 'left' else 0.99
-            tt = ax.text(tx, 1.02, text, transform=ax.transAxes, ha=anchor, va="bottom",
-                        fontsize=options.footer_fontsize, weight="bold")
-            tt.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
+        right = " • ".join(parts)
+
+        # Draw info just above the elevation panel (or bottom of figure if no elev graph)
+        if options.show_elev_graph:
+            anchor_ax = ax_elev
+        else:
+            anchor_ax = ax_track
+
+        if left:
+            tl = anchor_ax.text(0.01, 1.02, left, transform=anchor_ax.transAxes, ha="left", va="bottom",
+                                fontsize=options.info_fontsize, weight="bold")
+            tl.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
+        if right:
+            tr = anchor_ax.text(0.99, 1.02, right, transform=anchor_ax.transAxes, ha="right", va="bottom",
+                                fontsize=options.info_fontsize, weight="bold")
+            tr.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
 
     plt.subplots_adjust(left=0.06, right=0.97, top=0.92, bottom=0.08)
     buf = io.BytesIO()

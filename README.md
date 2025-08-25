@@ -2,9 +2,21 @@
 
 Create a social-media friendly image from a GPX file:
 - 2D overhead track (projected to Web Mercator)
-- Elevation profile
-- Stats text: Distance (mi), Elevation Gain (ft), Duration, Location, Temperature (optional)
+- Optional Elevation profile (with toggles for axis labels)
+- Run information block with individually toggleable fields and per-field label prefixes
 - Transparent PNG option for easy overlay on video/photos
+
+## New in v3
+- Show/Hide Elevation Graph
+  - Show/Hide Graph Labels: Distance (km), Elevation (m)
+- Show/Hide Run Information
+  - Location (labels on/off)
+  - Distance in miles (labels on/off)
+  - Elevation gain in feet (labels on/off)
+  - Time (labels on/off)
+  - Temperature in °F (labels on/off)
+- Show/Hide Title and Sub Title
+- Font size controls for Title, Sub Title, Graph Axes, and Run Info
 
 ## Quick Start
 
@@ -14,8 +26,4 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Notes
-- Distance computed geodesically; elevation gain sums positive deltas.
-- Duration uses first/last GPX timestamps when available.
-- Location defaults to the midpoint of the GPX bounding box; override with your own label.
-- Temperature is manual for now; can be automated later via weather API.
+Upload a `.gpx`, tweak options, and Download PNG.
