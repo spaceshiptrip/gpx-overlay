@@ -38,6 +38,12 @@ class OverlayOptions:
     show_graph_axes_lines: bool = True
     grid: bool = False
 
+    # NEW: tick visibility controls
+    show_x_ticks: bool = True
+    show_y_ticks: bool = True
+    show_x_ticklabels: bool = True
+    show_y_ticklabels: bool = True
+
     # Peak controls
     show_peak: bool = True
     show_peak_marker: bool = True
@@ -291,6 +297,7 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         for spine in elev_ax.spines.values():
             spine.set_visible(options.show_graph_axes_lines)
 
+        # Labels
         if options.show_graph_label_x:
             elev_ax.set_xlabel(dist_label, fontsize=options.axes_fontsize)
         else:
@@ -299,8 +306,18 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             elev_ax.set_ylabel(elev_label, fontsize=options.axes_fontsize)
         else:
             elev_ax.set_ylabel("")
-        elev_ax.tick_params(axis='both', labelsize=options.axes_fontsize)
 
+        # Ticks & tick labels
+        elev_ax.tick_params(axis='x',
+                            bottom=options.show_x_ticks,
+                            labelbottom=options.show_x_ticklabels,
+                            labelsize=options.axes_fontsize)
+        elev_ax.tick_params(axis='y',
+                            left=options.show_y_ticks,
+                            labelleft=options.show_y_ticklabels,
+                            labelsize=options.axes_fontsize)
+
+        # Peak features
         if options.show_peak and np.any(elev_mask):
             elev_vals = elev_series[elev_mask]
             dist_vals = dist_series[elev_mask]

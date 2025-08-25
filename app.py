@@ -36,6 +36,10 @@ with st.sidebar:
 
     show_graph_label_x = st.checkbox("Show X label", value=True)
     show_graph_label_y = st.checkbox("Show Y label", value=True)
+    show_x_ticks = st.checkbox("Show X ticks", value=True)
+    show_y_ticks = st.checkbox("Show Y ticks", value=True)
+    show_x_ticklabels = st.checkbox("Show X tick labels", value=True)
+    show_y_ticklabels = st.checkbox("Show Y tick labels", value=True)
     show_graph_axes_lines = st.checkbox("Show axes lines", value=True)
     axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
     grid = st.checkbox("Show elevation grid", value=False)
@@ -109,6 +113,10 @@ if uploaded is not None:
         show_elev_graph=show_elev_graph,
         show_graph_label_x=show_graph_label_x,
         show_graph_label_y=show_graph_label_y,
+        show_x_ticks=show_x_ticks,
+        show_y_ticks=show_y_ticks,
+        show_x_ticklabels=show_x_ticklabels,
+        show_y_ticklabels=show_y_ticklabels,
         show_graph_axes_lines=show_graph_axes_lines,
         grid=grid,
 
