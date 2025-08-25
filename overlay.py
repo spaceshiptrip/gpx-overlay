@@ -21,20 +21,27 @@ class OverlayOptions:
     show_title: bool = True
     show_subtitle: bool = True
 
-    # Graph visibility / labels
-    show_elev_graph: bool = True
-    show_graph_label_distance: bool = True   # X-axis label
-    show_graph_label_elevation: bool = True  # Y-axis label
-    grid: bool = False
-
     # Track sizing modes
-    # 'fit_width' -> fills available width; height from aspect
-    # 'fixed_height' -> user sets track_height_px; width fills container
-    # 'fixed_width' -> user sets track_width_px; height from aspect
     track_sizing_mode: str = "fit_width"
     track_height_px: int = 400
     track_width_px: int = 1200
-    track_margin_px: int = 20  # inner padding inside the track axes (visual)
+
+    # Elevation plot sizing modes
+    elev_sizing_mode: str = "fit_track_width"
+    elev_height_px: int = 240
+    elev_width_px: int = 1200
+
+    # Graph toggles
+    show_elev_graph: bool = True
+    show_graph_label_x: bool = True
+    show_graph_label_y: bool = True
+    show_graph_axes_lines: bool = True
+    grid: bool = False
+
+    # Peak controls
+    show_peak: bool = True
+    show_peak_marker: bool = True
+    show_peak_text: bool = True
 
     # Run info block visibility
     show_run_info: bool = True
@@ -44,16 +51,16 @@ class OverlayOptions:
     label_location: bool = True
 
     show_distance: bool = True
-    label_distance: bool = True  # "Dist " prefix
+    label_distance: bool = True
 
     show_elev_gain: bool = True
-    label_elev_gain: bool = True  # "Gain " prefix
+    label_elev_gain: bool = True
 
     show_time: bool = True
-    label_time: bool = True  # "Time " prefix
+    label_time: bool = True
 
     show_temperature: bool = True
-    label_temperature: bool = True  # "Temp " prefix
+    label_temperature: bool = True
     temperature_f: Optional[float] = None
 
     # Canvas / style
@@ -66,12 +73,12 @@ class OverlayOptions:
     title_fontsize: int = 48
     subtitle_fontsize: int = 28
     axes_fontsize: int = 14
-    info_fontsize: int = 24  # run info text (footer)
+    info_fontsize: int = 24
 
     # Run info font customization
-    info_fontfamily: str = "sans-serif"     # 'sans-serif' | 'serif' | 'monospace' | custom-installed name
-    info_fontstyle: str = "normal"          # 'normal' | 'italic'
-    info_fontweight: str = "bold"           # 'normal' | 'bold' | numeric string like '600'
+    info_fontfamily: str = "sans-serif"
+    info_fontstyle: str = "normal"
+    info_fontweight: str = "bold"
 
     # Lines
     line_width_track: float = 3.0
@@ -186,7 +193,6 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
 
     # Units
     imperial = options.unit_system.lower().startswith("imp")
-    # For plotting
     dist_series = dists_km * (0.621371 if imperial else 1.0)
     elev_series = elevs * (3.28084 if imperial else 1.0)
     dist_label = "Distance (mi)" if imperial else "Distance (km)"
@@ -214,46 +220,53 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
                           fontsize=options.subtitle_fontsize, va="center", ha="left")
         s.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
 
-    # --- ELEV AXES (optional) ---
-    elev_h_frac = 0.22 if options.show_elev_graph else 0.0
-    elev_ax = None
-    if options.show_elev_graph:
-        elev_ax = fig.add_axes([0.06, 0.06, 0.88, elev_h_frac - 0.02])
-
-    # --- TRACK AXES position logic ---
-    # Available vertical space for the track between title bottom and elevation top
-    top_y = 1 - title_h_frac - 0.02
-    bottom_y = (0.06 + elev_h_frac) if options.show_elev_graph else 0.06
-    avail_h_frac = max(0.12, top_y - bottom_y)
-    avail_w_frac = 0.92
-
-    # Data aspect = height_units / width_units
+    # --- Compute data extents for track ---
     x_min, x_max = np.nanmin(x), np.nanmax(x)
     y_min, y_max = np.nanmin(y), np.nanmax(y)
     if x_max - x_min < 1e-6: x_max += 1.0
     if y_max - y_min < 1e-6: y_max += 1.0
     data_aspect = (y_max - y_min) / (x_max - x_min)
 
-    # Default: fit width
-    track_w_frac = avail_w_frac
-    track_h_frac = min(avail_h_frac, data_aspect * track_w_frac * (fig_w / fig_h))
+    # --- LAYOUT BOUNDS ---
+    top_y = 1 - title_h_frac - 0.02
+    base_margin = 0.06
+    avail_w_frac = 0.92
 
+    # Track sizing
     if options.track_sizing_mode == "fixed_height":
-        track_h_frac = min(avail_h_frac, options.track_height_px / options.height_px)
-        needed_w = track_h_frac / (data_aspect * (fig_w / fig_h))
-        track_w_frac = min(avail_w_frac, needed_w)
+        track_h_frac = min(top_y - base_margin, options.track_height_px / options.height_px)
+        track_w_frac = min(avail_w_frac, track_h_frac / (data_aspect * (fig_w / fig_h)))
     elif options.track_sizing_mode == "fixed_width":
         track_w_frac = min(avail_w_frac, options.track_width_px / options.width_px)
-        needed_h = data_aspect * track_w_frac * (fig_w / fig_h)
-        track_h_frac = min(avail_h_frac, needed_h)
+        track_h_frac = min(top_y - base_margin, data_aspect * track_w_frac * (fig_w / fig_h))
+    else:  # fit_width
+        track_w_frac = avail_w_frac
+        track_h_frac = min(top_y - base_margin, data_aspect * track_w_frac * (fig_w / fig_h))
 
-    # Center track axes in available area
-    x0 = (1 - track_w_frac) / 2
-    y0 = bottom_y + (avail_h_frac - track_h_frac) / 2
-    track_ax = fig.add_axes([x0, y0, track_w_frac, track_h_frac])
+    # Elevation desired sizes
+    elev_h_frac_desired = 0.22 if options.show_elev_graph else 0.0
+    elev_w_frac_desired = track_w_frac
+    if options.show_elev_graph:
+        if options.elev_sizing_mode == "fixed_height":
+            elev_h_frac_desired = options.elev_height_px / options.height_px
+        elif options.elev_sizing_mode == "fixed_width":
+            elev_w_frac_desired = min(avail_w_frac, options.elev_width_px / options.width_px)
+        else:
+            elev_w_frac_desired = track_w_frac
+
+    # Vertical allocation
+    total_needed_h = track_h_frac + (elev_h_frac_desired if options.show_elev_graph else 0)
+    max_h = top_y - base_margin
+    if total_needed_h > max_h and options.show_elev_graph:
+        overflow = total_needed_h - max_h
+        track_h_frac = max(0.12, track_h_frac - overflow)
+
+    # Track axis
+    track_x0 = (1 - track_w_frac) / 2
+    elev_h_actual = (elev_h_frac_desired if options.show_elev_graph else 0.0)
+    track_y0 = base_margin + elev_h_actual
+    track_ax = fig.add_axes([track_x0, track_y0, track_w_frac, track_h_frac])
     track_ax.set_axis_off()
-
-    # pad by 5% of data span
     xpad = (x_max - x_min) * 0.05
     ypad = (y_max - y_min) * 0.05
     track_ax.set_xlim(x_min - xpad, x_max + xpad)
@@ -261,23 +274,47 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     track_ax.set_aspect('equal', adjustable='box')
     track_ax.plot(x, y, linewidth=options.line_width_track)
 
-    # Draw elevation plot
-    if options.show_elev_graph and elev_ax is not None:
+    # Elevation axis
+    elev_ax = None
+    if options.show_elev_graph:
+        elev_ax_h = min(elev_h_frac_desired, top_y - base_margin - track_h_frac)
+        elev_w_frac = elev_w_frac_desired
+        elev_x0 = (1 - elev_w_frac) / 2
+        elev_y0 = base_margin
+        elev_ax = fig.add_axes([elev_x0, elev_y0, elev_w_frac, elev_ax_h])
+
         elev_mask = ~np.isnan(elevs)
         elev_ax.plot(dist_series[elev_mask], elev_series[elev_mask], linewidth=options.line_width_elev)
+
         if options.grid:
             elev_ax.grid(True, alpha=0.3)
-        if options.show_graph_label_distance:
+        for spine in elev_ax.spines.values():
+            spine.set_visible(options.show_graph_axes_lines)
+
+        if options.show_graph_label_x:
             elev_ax.set_xlabel(dist_label, fontsize=options.axes_fontsize)
         else:
             elev_ax.set_xlabel("")
-        if options.show_graph_label_elevation:
+        if options.show_graph_label_y:
             elev_ax.set_ylabel(elev_label, fontsize=options.axes_fontsize)
         else:
             elev_ax.set_ylabel("")
         elev_ax.tick_params(axis='both', labelsize=options.axes_fontsize)
 
-    # Footer / run info (optional)
+        if options.show_peak and np.any(elev_mask):
+            elev_vals = elev_series[elev_mask]
+            dist_vals = dist_series[elev_mask]
+            idx = int(np.nanargmax(elev_vals))
+            peak_elev = elev_vals[idx]
+            peak_dist = dist_vals[idx]
+            if options.show_peak_marker:
+                elev_ax.plot([peak_dist], [peak_elev], marker='o')
+            if options.show_peak_text:
+                txt = f"Peak: {peak_elev:.0f} {'ft' if imperial else 'm'}"
+                tt = elev_ax.text(peak_dist, peak_elev, "  " + txt, va="bottom", ha="left", fontsize=options.axes_fontsize)
+                tt.set_path_effects([pe.withStroke(linewidth=2, foreground='white')])
+
+    # Footer / run info
     if options.show_run_info:
         left = ""
         if options.show_location:
@@ -304,8 +341,7 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             parts.append(f"Temp {options.temperature_f:.0f}°F" if options.label_temperature else f"{options.temperature_f:.0f}°F")
 
         right = " • ".join(parts)
-
-        anchor_ax = elev_ax if (options.show_elev_graph and elev_ax is not None) else track_ax
+        anchor_ax = elev_ax if (options.show_elev_graph) else track_ax
         text_kwargs = dict(
             transform=anchor_ax.transAxes,
             va="bottom",
