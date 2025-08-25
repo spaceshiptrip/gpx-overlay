@@ -7,6 +7,9 @@ st.title("GPX → Social Overlay Image (Track + Elevation + Stats)")
 with st.sidebar:
     st.header("Overlay Options")
 
+    # Units
+    unit_system = st.radio("Units", options=["imperial", "metric"], index=0, horizontal=True)
+
     # Title / subtitle toggles
     show_title = st.checkbox("Show Title", value=True)
     title = st.text_input("Title", "My Run")
@@ -20,8 +23,9 @@ with st.sidebar:
 
     # Elevation graph
     show_elev_graph = st.checkbox("Show Elevation Graph", value=True)
-    show_graph_label_distance = st.checkbox("Show Graph Label: Distance (km)", value=True)
-    show_graph_label_elevation = st.checkbox("Show Graph Label: Elevation (m)", value=True)
+    # Labels reflect current unit selection
+    show_graph_label_distance = st.checkbox(f"Show Graph Label: Distance ({'mi' if unit_system=='imperial' else 'km'})", value=True)
+    show_graph_label_elevation = st.checkbox(f"Show Graph Label: Elevation ({'ft' if unit_system=='imperial' else 'm'})", value=True)
     axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
     grid = st.checkbox("Show elevation grid", value=False)
 
@@ -31,13 +35,18 @@ with st.sidebar:
     show_run_info = st.checkbox("Show Run Information", value=True)
     info_fs = st.number_input("Run Info Font Size", value=24, step=1, min_value=6, max_value=120)
 
+    # Run info font family/style/weight
+    family_choice = st.selectbox("Run Info Font Family", options=["sans-serif", "serif", "monospace"], index=0)
+    style_choice = st.selectbox("Run Info Font Style", options=["normal", "italic"], index=0)
+    weight_choice = st.selectbox("Run Info Font Weight", options=["normal", "bold", "300", "400", "500", "600", "700", "800", "900"], index=1)
+
     show_location = st.checkbox("Show: Location", value=True)
     label_location = st.checkbox("Label: Location", value=True)
 
-    show_distance = st.checkbox("Show: Distance (miles)", value=True)
+    show_distance = st.checkbox(f"Show: Distance ({'miles' if unit_system=='imperial' else 'kilometers'})", value=True)
     label_distance = st.checkbox("Label: Distance", value=True)
 
-    show_elev_gain = st.checkbox("Show: Elevation (feet)", value=True)
+    show_elev_gain = st.checkbox(f"Show: Elevation ({'feet' if unit_system=='imperial' else 'meters'})", value=True)
     label_elev_gain = st.checkbox("Label: Elevation", value=True)
 
     show_time = st.checkbox("Show: Time", value=True)
@@ -60,6 +69,9 @@ uploaded = st.file_uploader("GPX File", type=["gpx"])
 
 if uploaded is not None:
     opts = OverlayOptions(
+        # units
+        unit_system=unit_system,
+
         # titles
         title=title,
         subtitle=subtitle,
@@ -103,6 +115,9 @@ if uploaded is not None:
         subtitle_fontsize=int(subtitle_fs),
         axes_fontsize=int(axes_fs),
         info_fontsize=int(info_fs),
+        info_fontfamily=family_choice,
+        info_fontstyle=style_choice,
+        info_fontweight=weight_choice,
     )
 
     if st.button("Generate Overlay Image"):

@@ -12,6 +12,9 @@ from pyproj import Geod, Transformer
 
 @dataclass
 class OverlayOptions:
+    # Units: "imperial" or "metric"
+    unit_system: str = "imperial"
+
     # Titles
     title: str = "My Run"
     subtitle: str = "Marathon Training"
@@ -55,6 +58,11 @@ class OverlayOptions:
     subtitle_fontsize: int = 28
     axes_fontsize: int = 14
     info_fontsize: int = 24  # run info text (footer)
+
+    # Run info font customization
+    info_fontfamily: str = "sans-serif"     # 'sans-serif' | 'serif' | 'monospace' | custom-installed name
+    info_fontstyle: str = "normal"          # 'normal' | 'italic'
+    info_fontweight: str = "bold"           # 'normal' | 'bold' | numeric string like '600'
 
     # Lines
     line_width_track: float = 3.0
@@ -168,6 +176,14 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         dists_m.append(dists_m[-1] + d)
     dists_km = np.array(dists_m) / 1000.0
 
+    # Units
+    imperial = options.unit_system.lower().startswith("imp")
+    # For plotting
+    dist_series = dists_km * (0.621371 if imperial else 1.0)
+    elev_series = elevs * (3.28084 if imperial else 1.0)
+    dist_label = "Distance (mi)" if imperial else "Distance (km)"
+    elev_label = "Elevation (ft)" if imperial else "Elevation (m)"
+
     # Figure and layout
     dpi = options.dpi
     fig_w = options.width_px / dpi
@@ -219,19 +235,19 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     if options.show_elev_graph:
         ax_elev = fig.add_subplot(gs[slice(*elev_rows), :])
         elev_mask = ~np.isnan(elevs)
-        ax_elev.plot(dists_km[elev_mask], elevs[elev_mask], linewidth=options.line_width_elev)
+        ax_elev.plot(dist_series[elev_mask], elev_series[elev_mask], linewidth=options.line_width_elev)
         if options.grid:
             ax_elev.grid(True, alpha=0.3)
         # Axis labels with toggles and font size
         if options.show_graph_label_distance:
-            ax_elev.set_xlabel("Distance (km)", fontsize=options.axes_fontsize)
+            ax_elev.set_xlabel(dist_label, fontsize=options.axes_fontsize)
         else:
             ax_elev.set_xlabel("")
         if options.show_graph_label_elevation:
-            ax_elev.set_ylabel("Elevation (m)", fontsize=options.axes_fontsize)
+            ax_elev.set_ylabel(elev_label, fontsize=options.axes_fontsize)
         else:
             ax_elev.set_ylabel("")
-        # also set tick label sizes consistently
+        # Tick label sizes
         ax_elev.tick_params(axis='both', labelsize=options.axes_fontsize)
 
     # Footer / run info (optional)
@@ -244,11 +260,19 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
 
         parts = []
         if options.show_distance:
-            miles = _miles(stats.distance_km)
-            parts.append((f"Dist {miles:.2f} mi" if options.label_distance else f"{miles:.2f} mi"))
+            miles_val = _miles(stats.distance_km)
+            km_val = stats.distance_km
+            if imperial:
+                parts.append((f"Dist {miles_val:.2f} mi" if options.label_distance else f"{miles_val:.2f} mi"))
+            else:
+                parts.append((f"Dist {km_val:.2f} km" if options.label_distance else f"{km_val:.2f} km"))
         if options.show_elev_gain:
-            gain_ft = _feet(stats.elev_gain_m)
-            parts.append((f"Gain {gain_ft:.0f} ft" if options.label_elev_gain else f"{gain_ft:.0f} ft"))
+            ft_val = _feet(stats.elev_gain_m)
+            m_val = stats.elev_gain_m
+            if imperial:
+                parts.append((f"Gain {ft_val:.0f} ft" if options.label_elev_gain else f"{ft_val:.0f} ft"))
+            else:
+                parts.append((f"Gain {m_val:.0f} m" if options.label_elev_gain else f"{m_val:.0f} m"))
         if options.show_time:
             dur = _format_duration(stats.duration)
             parts.append((f"Time {dur}" if options.label_time else f"{dur}"))
@@ -257,19 +281,23 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
 
         right = " • ".join(parts)
 
-        # Draw info just above the elevation panel (or bottom of figure if no elev graph)
-        if options.show_elev_graph:
-            anchor_ax = ax_elev
-        else:
-            anchor_ax = ax_track
+        # Choose anchor (above elev graph if shown, else bottom of track panel)
+        anchor_ax = ax_elev if options.show_elev_graph else ax_track
+
+        text_kwargs = dict(
+            transform=anchor_ax.transAxes,
+            va="bottom",
+            fontsize=options.info_fontsize,
+            fontfamily=options.info_fontfamily,
+            fontstyle=options.info_fontstyle,
+            fontweight=options.info_fontweight,
+        )
 
         if left:
-            tl = anchor_ax.text(0.01, 1.02, left, transform=anchor_ax.transAxes, ha="left", va="bottom",
-                                fontsize=options.info_fontsize, weight="bold")
+            tl = anchor_ax.text(0.01, 1.02, left, ha="left", **text_kwargs)
             tl.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
         if right:
-            tr = anchor_ax.text(0.99, 1.02, right, transform=anchor_ax.transAxes, ha="right", va="bottom",
-                                fontsize=options.info_fontsize, weight="bold")
+            tr = anchor_ax.text(0.99, 1.02, right, ha="right", **text_kwargs)
             tr.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
 
     plt.subplots_adjust(left=0.06, right=0.97, top=0.92, bottom=0.08)
