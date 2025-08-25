@@ -44,11 +44,19 @@ with st.sidebar:
     axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
     grid = st.checkbox("Show elevation grid", value=False)
 
-    # Peak options
-    st.subheader("Peak options")
-    show_peak = st.checkbox("Show peak elevation", value=True)
-    show_peak_marker = st.checkbox("Show peak marker", value=True)
-    show_peak_text = st.checkbox("Show peak text", value=True)
+    # Peak options (elevation graph)
+    st.subheader("Peak options (elevation graph)")
+    show_peak = st.checkbox("Show peak elevation (elev graph)", value=True)
+    show_peak_marker = st.checkbox("Show peak marker (elev graph)", value=True)
+    show_peak_text = st.checkbox("Show peak text (elev graph)", value=True)
+
+    st.markdown("---")
+
+    # Track peak options (GPX map)
+    st.subheader("Peak options (GPX track)")
+    show_track_peak = st.checkbox("Show peak elevation (track)", value=True)
+    show_track_peak_marker = st.checkbox("Show peak marker (track)", value=True)
+    show_track_peak_text = st.checkbox("Show peak text (track)", value=True)
 
     st.markdown("---")
 
@@ -120,10 +128,15 @@ if uploaded is not None:
         show_graph_axes_lines=show_graph_axes_lines,
         grid=grid,
 
-        # peak
+        # peak (elevation graph)
         show_peak=show_peak,
         show_peak_marker=show_peak_marker,
         show_peak_text=show_peak_text,
+
+        # track peak (gpx map)
+        show_track_peak=show_track_peak,
+        show_track_peak_marker=show_track_peak_marker,
+        show_track_peak_text=show_track_peak_text,
 
         # run info block
         show_run_info=show_run_info,

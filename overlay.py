@@ -44,10 +44,15 @@ class OverlayOptions:
     show_x_ticklabels: bool = True
     show_y_ticklabels: bool = True
 
-    # Peak controls
+    # Peak controls (elevation chart)
     show_peak: bool = True
     show_peak_marker: bool = True
     show_peak_text: bool = True
+
+    # NEW: Peak controls for GPX track plot
+    show_track_peak: bool = True
+    show_track_peak_marker: bool = True
+    show_track_peak_text: bool = True
 
     # Run info block visibility
     show_run_info: bool = True
@@ -280,6 +285,29 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     track_ax.set_aspect('equal', adjustable='box')
     track_ax.plot(x, y, linewidth=options.line_width_track)
 
+    # --- Track peak marker/text ---
+    if options.show_track_peak:
+        elev_mask = ~np.isnan(elevs)
+        if np.any(elev_mask):
+            idx = int(np.nanargmax(elevs[elev_mask]))
+            # get original index in full arrays
+            valid_indices = np.flatnonzero(elev_mask)
+            real_idx = int(valid_indices[idx])
+            peak_x = x[real_idx]
+            peak_y = y[real_idx]
+            peak_elev_val = elevs[real_idx] * (3.28084 if imperial else 1.0)
+            if options.show_track_peak_marker:
+                track_ax.plot([peak_x], [peak_y], marker='o')
+            if options.show_track_peak_text:
+                txt = f"{int(round(peak_elev_val))} {'ft' if imperial else 'm'}"
+                # place text with a small offset
+                dx = (x_max - x_min) * 0.01
+                dy = (y_max - y_min) * 0.01
+                tt = track_ax.text(peak_x + dx, peak_y + dy, txt,
+                                   fontsize=options.axes_fontsize,
+                                   ha='left', va='bottom')
+                tt.set_path_effects([pe.withStroke(linewidth=2, foreground='white')])
+
     # Elevation axis
     elev_ax = None
     if options.show_elev_graph:
@@ -317,13 +345,13 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
                             labelleft=options.show_y_ticklabels,
                             labelsize=options.axes_fontsize)
 
-        # Peak features
+        # Peak features (elevation chart)
         if options.show_peak and np.any(elev_mask):
             elev_vals = elev_series[elev_mask]
             dist_vals = dist_series[elev_mask]
-            idx = int(np.nanargmax(elev_vals))
-            peak_elev = elev_vals[idx]
-            peak_dist = dist_vals[idx]
+            idx2 = int(np.nanargmax(elev_vals))
+            peak_elev = elev_vals[idx2]
+            peak_dist = dist_vals[idx2]
             if options.show_peak_marker:
                 elev_ax.plot([peak_dist], [peak_elev], marker='o')
             if options.show_peak_text:
