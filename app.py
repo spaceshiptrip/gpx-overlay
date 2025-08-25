@@ -10,7 +10,7 @@ with st.sidebar:
     # Units
     unit_system = st.radio("Units", options=["imperial", "metric"], index=0, horizontal=True)
 
-    # Title / subtitle toggles
+    # Title / subtitle
     show_title = st.checkbox("Show Title", value=True)
     title = st.text_input("Title", "My Run")
     title_fs = st.number_input("Title Font Size", value=48, step=1, min_value=8, max_value=200)
@@ -30,10 +30,33 @@ with st.sidebar:
 
     # Elevation graph
     show_elev_graph = st.checkbox("Show Elevation Graph", value=True)
-    show_graph_label_distance = st.checkbox(f"Show Graph Label: Distance ({'mi' if unit_system=='imperial' else 'km'})", value=True)
-    show_graph_label_elevation = st.checkbox(f"Show Graph Label: Elevation ({'ft' if unit_system=='imperial' else 'm'})", value=True)
+    elev_sizing_mode = st.radio("Elevation sizing", options=["fit_track_width", "fixed_height", "fixed_width"], index=0, horizontal=True)
+    elev_height_px = st.number_input("Elevation height (px) [if fixed_height]", value=240, min_value=50, max_value=5000, step=10)
+    elev_width_px = st.number_input("Elevation width (px) [if fixed_width]", value=1200, min_value=50, max_value=10000, step=10)
+
+    show_graph_label_x = st.checkbox("Show X label", value=True)
+    show_graph_label_y = st.checkbox("Show Y label", value=True)
+    show_x_ticks = st.checkbox("Show X ticks", value=True)
+    show_y_ticks = st.checkbox("Show Y ticks", value=True)
+    show_x_ticklabels = st.checkbox("Show X tick labels", value=True)
+    show_y_ticklabels = st.checkbox("Show Y tick labels", value=True)
+    show_graph_axes_lines = st.checkbox("Show axes lines", value=True)
     axes_fs = st.number_input("Graph Axes Font Size", value=14, step=1, min_value=6, max_value=72)
     grid = st.checkbox("Show elevation grid", value=False)
+
+    # Peak options (elevation graph)
+    st.subheader("Peak options (elevation graph)")
+    show_peak = st.checkbox("Show peak elevation (elev graph)", value=True)
+    show_peak_marker = st.checkbox("Show peak marker (elev graph)", value=True)
+    show_peak_text = st.checkbox("Show peak text (elev graph)", value=True)
+
+    st.markdown("---")
+
+    # Track peak options (GPX map)
+    st.subheader("Peak options (GPX track)")
+    show_track_peak = st.checkbox("Show peak elevation (track)", value=True)
+    show_track_peak_marker = st.checkbox("Show peak marker (track)", value=True)
+    show_track_peak_text = st.checkbox("Show peak text (track)", value=True)
 
     st.markdown("---")
 
@@ -89,11 +112,31 @@ if uploaded is not None:
         track_height_px=int(track_height_px),
         track_width_px=int(track_width_px),
 
+        # elevation sizing
+        elev_sizing_mode=elev_sizing_mode,
+        elev_height_px=int(elev_height_px),
+        elev_width_px=int(elev_width_px),
+
         # graph
         show_elev_graph=show_elev_graph,
-        show_graph_label_distance=show_graph_label_distance,
-        show_graph_label_elevation=show_graph_label_elevation,
+        show_graph_label_x=show_graph_label_x,
+        show_graph_label_y=show_graph_label_y,
+        show_x_ticks=show_x_ticks,
+        show_y_ticks=show_y_ticks,
+        show_x_ticklabels=show_x_ticklabels,
+        show_y_ticklabels=show_y_ticklabels,
+        show_graph_axes_lines=show_graph_axes_lines,
         grid=grid,
+
+        # peak (elevation graph)
+        show_peak=show_peak,
+        show_peak_marker=show_peak_marker,
+        show_peak_text=show_peak_text,
+
+        # track peak (gpx map)
+        show_track_peak=show_track_peak,
+        show_track_peak_marker=show_track_peak_marker,
+        show_track_peak_text=show_track_peak_text,
 
         # run info block
         show_run_info=show_run_info,
@@ -134,7 +177,6 @@ if uploaded is not None:
     if st.button("Generate Overlay Image"):
         png_bytes = generate_overlay_image(uploaded.read(), opts)
         st.image(png_bytes, caption="Overlay Preview", use_container_width=True)
-
         st.download_button("⬇️ Download PNG", data=png_bytes, file_name="gpx_overlay.png", mime="image/png")
 
 st.markdown("---")

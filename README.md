@@ -1,16 +1,25 @@
 # GPX Overlay Maker (Track + Elevation + Stats)
 
-## v5 – Track sizing controls
-- **Fit width**: track expands to available width; height follows aspect
-- **Fixed height (anchored with width)**: set exact track height in pixels; width fills container (aspect preserved)
-- **Fixed width (anchored with height)**: set exact track width in pixels; height computed from aspect (capped to available area)
+## v6 – Elevation plot controls
+- **Sizing modes:**
+  - *Fit track width* (same width as GPX plot)
+  - *Fixed height* (px; width = track width)
+  - *Fixed width* (px; height auto)
+- **Labels:**
+  - Show/Hide **X** label
+  - Show/Hide **Y** label
+  - Show/Hide **axes lines** (spines)
+- **Peak features:**
+  - Show/Hide peak elevation
+  - Show/Hide peak marker
+  - Show/Hide peak text
 
-Other features:
-- Units toggle (imperial ↔ metric): graph & info switch mi/ft vs km/m
-- Run info font family/style/weight controls
-- Elevation graph show/hide + label toggles
-- Per-field info toggles (location, distance, elevation, time, temp)
-- Transparent PNG export; size/DPI controls; titles with font-size
+Everything else from v5:
+- Units toggle (imperial ↔ metric)
+- Track sizing modes
+- Run info font family/style/weight + sizes
+- Per-field info toggles
+- Titles/subtitle controls, transparent PNG, DPI, canvas size
 
 ## Quick Start
 ```bash
