@@ -64,6 +64,37 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Start/Finish arrows
+    st.subheader("Start / Finish Arrows")
+    show_start_finish_track = st.checkbox("Show on GPX track", value=True)
+    show_start_finish_elev = st.checkbox("Show on elevation", value=True)
+    arrow_color_track = st.color_picker("Arrow color (track)", value="#000000")
+    arrow_color_elev = st.color_picker("Arrow color (elev)", value="#000000")
+
+    st.markdown("---")
+
+    # End mileage
+    st.subheader("End Mileage Marker/Label")
+    show_end_mileage_track = st.checkbox("Show end mileage on track", value=True)
+    show_end_mileage_elev = st.checkbox("Show end mileage on elev", value=True)
+    end_marker_style = st.selectbox("End marker style", options=["o","s","^","v","D","X"], index=0)
+    end_marker_size = st.number_input("End marker size", value=7.0, min_value=1.0, max_value=40.0, step=0.5)
+    end_marker_color = st.color_picker("End marker color", value="#000000")
+    end_label_color = st.color_picker("End label color", value="#000000")
+
+    st.markdown("---")
+
+    # Mile markers
+    st.subheader("Mile/KM Markers")
+    mile_markers_track = st.selectbox("On GPX track", options=["none","ticks","ticks+labels"], index=0)
+    mile_marker_size_track = st.number_input("Track marker size", value=4.0, min_value=1.0, max_value=20.0, step=0.5)
+    mile_marker_color_track = st.color_picker("Track marker color", value="#000000")
+
+    mile_markers_elev = st.selectbox("On elevation", options=["none","ticks","ticks+labels"], index=0)
+    mile_tick_label_rotation = st.number_input("Elev label rotation (deg)", value=0.0, step=5.0)
+
+    st.markdown("---")
+
     # Line styles
     st.subheader("Line styles")
     line_width_track = st.number_input("Track line width", value=3.0, min_value=0.1, max_value=20.0, step=0.1)
@@ -101,6 +132,15 @@ with st.sidebar:
     shadow_alpha_elev = st.slider("Shadow alpha (elevation)", min_value=0.0, max_value=1.0, value=0.4, step=0.05)
     shadow_dx_elev = st.number_input("Shadow offset X (px, elev)", value=2.0, step=0.5)
     shadow_dy_elev = st.number_input("Shadow offset Y (px, elev)", value=-2.0, step=0.5)
+
+    st.markdown("---")
+
+    # Color gradients
+    st.subheader("Color Gradient")
+    gradient_track = st.selectbox("Track color by", options=["none","speed","elevation"], index=0)
+    cmap_track = st.selectbox("Track colormap", options=["viridis","plasma","magma","inferno","turbo","cool","hot","jet"], index=0)
+    gradient_elev = st.selectbox("Elevation color by", options=["none","speed","elevation"], index=0)
+    cmap_elev = st.selectbox("Elevation colormap", options=["viridis","plasma","magma","inferno","turbo","cool","hot","jet"], index=0)
 
     st.markdown("---")
 
@@ -186,6 +226,27 @@ if uploaded is not None:
         peak_marker_size_track=float(peak_marker_size_track),
         peak_marker_color_track=peak_marker_color_track,
 
+        # start/finish arrows
+        show_start_finish_track=show_start_finish_track,
+        show_start_finish_elev=show_start_finish_elev,
+        arrow_color_track=arrow_color_track,
+        arrow_color_elev=arrow_color_elev,
+
+        # end mileage
+        show_end_mileage_track=show_end_mileage_track,
+        show_end_mileage_elev=show_end_mileage_elev,
+        end_marker_style=end_marker_style,
+        end_marker_size=float(end_marker_size),
+        end_marker_color=end_marker_color,
+        end_label_color=end_label_color,
+
+        # mile markers
+        mile_markers_track=mile_markers_track,
+        mile_marker_size_track=float(mile_marker_size_track),
+        mile_marker_color_track=mile_marker_color_track,
+        mile_markers_elev=mile_markers_elev,
+        mile_tick_label_rotation=float(mile_tick_label_rotation),
+
         # line styles
         line_width_track=float(line_width_track),
         color_track=color_track,
@@ -220,25 +281,11 @@ if uploaded is not None:
         shadow_dx_elev=float(shadow_dx_elev),
         shadow_dy_elev=float(shadow_dy_elev),
 
-        # run info block
-        show_run_info=show_run_info,
-
-        # fields + labels
-        show_location=show_location,
-        label_location=label_location,
-
-        show_distance=show_distance,
-        label_distance=label_distance,
-
-        show_elev_gain=show_elev_gain,
-        label_elev_gain=label_elev_gain,
-
-        show_time=show_time,
-        label_time=label_time,
-
-        show_temperature=show_temperature,
-        label_temperature=label_temperature,
-        temperature_f=float(temp_f) if show_temperature else None,
+        # gradients
+        gradient_track=gradient_track,
+        gradient_elev=gradient_elev,
+        cmap_track=cmap_track,
+        cmap_elev=cmap_elev,
 
         # canvas
         width_px=int(width),
