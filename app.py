@@ -137,9 +137,9 @@ with st.sidebar:
 
     # Color gradients
     st.subheader("Color Gradient")
-    gradient_track = st.selectbox("Track color by", options=["none","speed","elevation"], index=0)
+    gradient_track = st.selectbox("Track color by", options=["none","speed","elevation","grade"], index=0)
     cmap_track = st.selectbox("Track colormap", options=["viridis","plasma","magma","inferno","turbo","cool","hot","jet"], index=0)
-    gradient_elev = st.selectbox("Elevation color by", options=["none","speed","elevation"], index=0)
+    gradient_elev = st.selectbox("Elevation color by", options=["none","speed","elevation","grade"], index=0)
     cmap_elev = st.selectbox("Elevation colormap", options=["viridis","plasma","magma","inferno","turbo","cool","hot","jet"], index=0)
 
     st.markdown("---")

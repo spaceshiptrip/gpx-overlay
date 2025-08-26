@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patheffects as pe
 from matplotlib.collections import LineCollection
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, TwoSlopeNorm
 from pyproj import Geod, Transformer
 
 
@@ -327,6 +327,20 @@ def _speeds(distances_m: np.ndarray, times: List[Optional[dt.datetime]]):
     return seg_v
 
 
+def _grades(dists_m: np.ndarray, elevs: np.ndarray) -> np.ndarray:
+    """
+    Compute terrain grade (%) per segment.
+    grade = 100 * delta_elevation / delta_horizontal_distance
+    """
+    dd = np.diff(dists_m)         # horizontal distance per segment (meters)
+    de = np.diff(elevs)           # elevation change per segment (meters)
+    dd = np.where(dd <= 0, np.nan, dd)  # avoid divide-by-zero
+    grade = 100.0 * de / dd
+    grade = np.where(np.isfinite(grade), grade, 0.0)  # replace NaN/inf
+    return grade if len(grade) > 0 else np.array([0.0])
+
+
+
 # -------------------- Main renderer --------------------
 
 def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
@@ -469,9 +483,21 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         if options.gradient_track == "speed":
             speeds = _speeds(dists_m, times)
             values = speeds
-        else:  # elevation
+        elif options.gradient_track == 'elevation':
             values = elevs[1:]  # segment value at end point
-        norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+        elif options.gradient_track == 'grade':
+            values = _grades(dists_m, elevs)
+            # optional: clamp to ±20% so outliers don't blow up colors
+            values = np.clip(values, -30, 30)
+
+        if options.gradient_track == "grade":
+            norm = TwoSlopeNorm(vcenter=0.0, vmin=np.nanmin(values), vmax=np.nanmax(values))
+        else:
+            norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+
+        # abs on grade%
+        # norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+
         lc = LineCollection(segs, cmap=plt.get_cmap(options.cmap_track), norm=norm,
                             linewidths=options.line_width_track)
         lc.set_array(values)
@@ -571,9 +597,25 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             if options.gradient_elev == "speed":
                 speeds = _speeds(dists_m, times)
                 values = speeds[:len(segs)] if len(speeds) >= len(segs) else np.pad(speeds, (0, len(segs)-len(speeds)), 'edge')
+            elif options.gradient_elev == "elevation":
+                values = elevs[1:]
+            elif options.gradient_elev == "grade":
+                values = _grades(dists_m, elevs)
+                # optional: clamp to ±20% so outliers don't blow up colors
+                values = np.clip(values, -20, 20)
+
+
+            # abs value
+            #norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+
+            if options.gradient_elev == "grade":
+                norm = TwoSlopeNorm(vcenter=0.0, vmin=np.nanmin(values), vmax=np.nanmax(values))
             else:
-                values = ys[1:]
-            norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+                norm = Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
+
+
+
+
             lc = LineCollection(segs, cmap=plt.get_cmap(options.cmap_elev), norm=norm,
                                 linewidths=options.line_width_elev)
             lc.set_array(values)
