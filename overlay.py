@@ -49,10 +49,18 @@ class OverlayOptions:
     show_peak_marker: bool = True
     show_peak_text: bool = True
 
+    # Peak marker styles (elevation)
+    peak_marker_size_elev: float = 6.0
+    peak_marker_color_elev: str = "#000000"
+
     # Peak controls for GPX track plot
     show_track_peak: bool = True
     show_track_peak_marker: bool = True
     show_track_peak_text: bool = True
+
+    # Peak marker styles (track)
+    peak_marker_size_track: float = 6.0
+    peak_marker_color_track: str = "#000000"
 
     # Run info block visibility
     show_run_info: bool = True
@@ -97,6 +105,14 @@ class OverlayOptions:
     color_track: str = "#000000"   # black
     color_elev: str = "#1f77b4"    # matplotlib default blue
 
+    # NEW: line style + caps/joins
+    style_track: str = "solid"     # solid/dashed/dotted
+    style_elev: str = "solid"
+    capstyle_track: str = "round"  # butt/round/projecting
+    capstyle_elev: str = "round"
+    joinstyle_track: str = "round" # miter/round/bevel
+    joinstyle_elev: str = "round"
+
     # Glow styles (per plot)
     show_glow_track: bool = False
     glow_color_track: str = "#FFFFFF"
@@ -105,6 +121,19 @@ class OverlayOptions:
     show_glow_elev: bool = False
     glow_color_elev: str = "#FFFFFF"
     glow_width_elev: float = 6.0
+
+    # NEW: shadow styles (per plot)
+    show_shadow_track: bool = False
+    shadow_color_track: str = "#000000"
+    shadow_alpha_track: float = 0.4
+    shadow_dx_track: float = 2.0     # px
+    shadow_dy_track: float = -2.0    # px
+
+    show_shadow_elev: bool = False
+    shadow_color_elev: str = "#000000"
+    shadow_alpha_elev: float = 0.4
+    shadow_dx_elev: float = 2.0
+    shadow_dy_elev: float = -2.0
 
 
 @dataclass
@@ -197,10 +226,44 @@ def _feet(m): return m * 3.28084
 def _miles(km): return km * 0.621371
 
 
+def _linestyle(style: str):
+    style = (style or "solid").lower()
+    if style == "dashed":
+        return "--"
+    if style == "dotted":
+        return ":"
+    return "-"  # solid
+
+
+def _apply_caps_joins(line, capstyle: str, joinstyle: str):
+    cap = (capstyle or "round").lower()
+    join = (joinstyle or "round").lower()
+    # Apply to both solid and dash to be safe
+    line.set_solid_capstyle(cap)
+    line.set_solid_joinstyle(join)
+    line.set_dash_capstyle(cap)
+    line.set_dash_joinstyle(join)
+
+
 def _apply_glow(line, glow_color: str, glow_width: float):
-    """Apply a glow/stroke effect to a Matplotlib line."""
     try:
         line.set_path_effects([pe.Stroke(linewidth=glow_width, foreground=glow_color), pe.Normal()])
+    except Exception:
+        pass
+
+
+def _apply_shadow(line, dx_px: float, dy_px: float, color: str, alpha: float):
+    try:
+        # SimpleLineShadow offset is in points, not pixels; convert approx using 72 dpi
+        # We'll scale with the figure dpi to keep visual consistency
+        ax = line.axes
+        dpi = ax.figure.dpi if ax and ax.figure else 72.0
+        dx_pt = dx_px * 72.0 / dpi
+        dy_pt = dy_px * 72.0 / dpi
+        effects = list(line.get_path_effects()) if line.get_path_effects() else []
+        effects.insert(0, pe.SimpleLineShadow(offset=(dx_pt, dy_pt), shadow_color=color, alpha=alpha))
+        effects.append(pe.Normal())
+        line.set_path_effects(effects)
     except Exception:
         pass
 
@@ -302,9 +365,12 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     track_ax.set_xlim(x_min - xpad, x_max + xpad)
     track_ax.set_ylim(y_min - ypad, y_max + ypad)
     track_ax.set_aspect('equal', adjustable='box')
-    line_track, = track_ax.plot(x, y, linewidth=options.line_width_track, color=options.color_track)
+    line_track, = track_ax.plot(x, y, linewidth=options.line_width_track, color=options.color_track, linestyle=_linestyle(options.style_track))
+    _apply_caps_joins(line_track, options.capstyle_track, options.joinstyle_track)
     if options.show_glow_track:
         _apply_glow(line_track, options.glow_color_track, options.glow_width_track)
+    if options.show_shadow_track:
+        _apply_shadow(line_track, options.shadow_dx_track, options.shadow_dy_track, options.shadow_color_track, options.shadow_alpha_track)
 
     # --- Track peak marker/text ---
     if options.show_track_peak:
@@ -317,14 +383,14 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             peak_y = y[real_idx]
             peak_elev_val = elevs[real_idx] * (3.28084 if imperial else 1.0)
             if options.show_track_peak_marker:
-                track_ax.plot([peak_x], [peak_y], marker='o')
+                track_ax.plot([peak_x], [peak_y], marker='o', markersize=options.peak_marker_size_track, color=options.peak_marker_color_track)
             if options.show_track_peak_text:
                 txt = f"{int(round(peak_elev_val))} {'ft' if imperial else 'm'}"
                 dx = (x_max - x_min) * 0.01
                 dy = (y_max - y_min) * 0.01
                 tt = track_ax.text(peak_x + dx, peak_y + dy, txt,
                                    fontsize=options.axes_fontsize,
-                                   ha='left', va='bottom')
+                                   ha='left', va='bottom', color=options.peak_marker_color_track)
                 tt.set_path_effects([pe.withStroke(linewidth=2, foreground='white')])
 
     # Elevation axis
@@ -338,9 +404,12 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
 
         elev_mask = ~np.isnan(elevs)
         line_elev, = elev_ax.plot(dist_series[elev_mask], elev_series[elev_mask],
-                                  linewidth=options.line_width_elev, color=options.color_elev)
+                                  linewidth=options.line_width_elev, color=options.color_elev, linestyle=_linestyle(options.style_elev))
+        _apply_caps_joins(line_elev, options.capstyle_elev, options.joinstyle_elev)
         if options.show_glow_elev:
             _apply_glow(line_elev, options.glow_color_elev, options.glow_width_elev)
+        if options.show_shadow_elev:
+            _apply_shadow(line_elev, options.shadow_dx_elev, options.shadow_dy_elev, options.shadow_color_elev, options.shadow_alpha_elev)
 
         if options.grid:
             elev_ax.grid(True, alpha=0.3)
@@ -375,10 +444,10 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             peak_elev = elev_vals[idx2]
             peak_dist = dist_vals[idx2]
             if options.show_peak_marker:
-                elev_ax.plot([peak_dist], [peak_elev], marker='o')
+                elev_ax.plot([peak_dist], [peak_elev], marker='o', markersize=options.peak_marker_size_elev, color=options.peak_marker_color_elev)
             if options.show_peak_text:
                 txt = f"Peak: {peak_elev:.0f} {'ft' if imperial else 'm'}"
-                tt = elev_ax.text(peak_dist, peak_elev, "  " + txt, va="bottom", ha="left", fontsize=options.axes_fontsize)
+                tt = elev_ax.text(peak_dist, peak_elev, "  " + txt, va="bottom", ha="left", fontsize=options.axes_fontsize, color=options.peak_marker_color_elev)
                 tt.set_path_effects([pe.withStroke(linewidth=2, foreground='white')])
 
     # Footer / run info
@@ -421,7 +490,7 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             tl = anchor_ax.text(0.01, 1.02, left, ha="left", **text_kwargs)
             tl.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
         if right:
-            tr = anchor_ax.text(0.99, 1.02, right, ha="right", **text_kwargs)
+            tr = anchor_ax.text(0.99, 1.02, right, **text_kwargs)
             tr.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
 
     buf = io.BytesIO()
