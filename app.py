@@ -281,6 +281,27 @@ if uploaded is not None:
         shadow_dx_elev=float(shadow_dx_elev),
         shadow_dy_elev=float(shadow_dy_elev),
 
+
+                # run info block
+        show_run_info=show_run_info,
+
+        # fields + labels
+        show_location=show_location,
+        label_location=label_location,
+
+        show_distance=show_distance,
+        label_distance=label_distance,
+
+        show_elev_gain=show_elev_gain,
+        label_elev_gain=label_elev_gain,
+
+        show_time=show_time,
+        label_time=label_time,
+
+        show_temperature=show_temperature,
+        label_temperature=label_temperature,
+        temperature_f=float(temp_f) if show_temperature else None,
+
         # gradients
         gradient_track=gradient_track,
         gradient_elev=gradient_elev,

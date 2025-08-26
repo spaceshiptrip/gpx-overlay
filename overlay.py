@@ -269,8 +269,10 @@ def _linestyle(style: str):
 def _apply_caps_joins(line, capstyle: str, joinstyle: str):
     cap = (capstyle or "round").lower()
     join = (joinstyle or "round").lower()
-    line.set_solid_capstyle(cap); line.set_solid_joinstyle(join)
-    line.set_dash_capstyle(cap);  line.set_dash_joinstyle(join)
+    line.set_solid_capstyle(cap)
+    line.set_solid_joinstyle(join)
+    line.set_dash_capstyle(cap)
+    line.set_dash_joinstyle(join)
 
 
 def _apply_glow(line, glow_color: str, glow_width: float):
@@ -282,6 +284,8 @@ def _apply_glow(line, glow_color: str, glow_width: float):
 
 def _apply_shadow(line, dx_px: float, dy_px: float, color: str, alpha: float):
     try:
+        # SimpleLineShadow offset is in points, not pixels; convert approx using 72 dpi
+        # We'll scale with the figure dpi to keep visual consistency
         ax = line.axes
         dpi = ax.figure.dpi if ax and ax.figure else 72.0
         dx_pt = dx_px * 72.0 / dpi
@@ -421,6 +425,34 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
     track_ax.set_xlim(x_min - xpad, x_max + xpad)
     track_ax.set_ylim(y_min - ypad, y_max + ypad)
     track_ax.set_aspect('equal', adjustable='box')
+    line_track, = track_ax.plot(x, y, linewidth=options.line_width_track, color=options.color_track, linestyle=_linestyle(options.style_track))
+    _apply_caps_joins(line_track, options.capstyle_track, options.joinstyle_track)
+    if options.show_glow_track:
+        _apply_glow(line_track, options.glow_color_track, options.glow_width_track)
+    if options.show_shadow_track:
+        _apply_shadow(line_track, options.shadow_dx_track, options.shadow_dy_track, options.shadow_color_track, options.shadow_alpha_track)
+
+    # --- Track peak marker/text ---
+    if options.show_track_peak:
+        elev_mask = ~np.isnan(elevs)
+        if np.any(elev_mask):
+            idx = int(np.nanargmax(elevs[elev_mask]))
+            valid_indices = np.flatnonzero(elev_mask)
+            real_idx = int(valid_indices[idx])
+            peak_x = x[real_idx]
+            peak_y = y[real_idx]
+            peak_elev_val = elevs[real_idx] * (3.28084 if imperial else 1.0)
+            if options.show_track_peak_marker:
+                track_ax.plot([peak_x], [peak_y], marker='o', markersize=options.peak_marker_size_track, color=options.peak_marker_color_track)
+            if options.show_track_peak_text:
+                txt = f"{int(round(peak_elev_val))} {'ft' if imperial else 'm'}"
+                dx = (x_max - x_min) * 0.01
+                dy = (y_max - y_min) * 0.01
+                tt = track_ax.text(peak_x + dx, peak_y + dy, txt,
+                                   fontsize=options.axes_fontsize,
+                                   ha='left', va='bottom', color=options.peak_marker_color_track)
+
+
 
     # Track rendering (solid color or gradient)
     if options.gradient_track == "none" or len(x) < 2:
@@ -514,6 +546,15 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
         elev_ax = fig.add_axes([elev_x0, elev_y0, elev_w_frac, elev_ax_h])
 
         elev_mask = ~np.isnan(elevs)
+        line_elev, = elev_ax.plot(dist_series[elev_mask], elev_series[elev_mask], linewidth=options.line_width_elev, color=options.color_elev, linestyle=_linestyle(options.style_elev))
+        _apply_caps_joins(line_elev, options.capstyle_elev, options.joinstyle_elev)
+        if options.show_glow_elev:
+            _apply_glow(line_elev, options.glow_color_elev, options.glow_width_elev)
+        if options.show_shadow_elev:
+            _apply_shadow(line_elev, options.shadow_dx_elev, options.shadow_dy_elev, options.shadow_color_elev, options.shadow_alpha_elev)
+
+        if options.grid:
+            elev_ax.grid(True, alpha=0.3)
         xs = dist_series[elev_mask]; ys = elev_series[elev_mask]
 
         if options.gradient_elev == "none" or len(xs) < 2:
@@ -581,6 +622,17 @@ def generate_overlay_image(gpx_bytes: bytes, options: OverlayOptions) -> bytes:
             elev_ax.set_ylabel(elev_label, fontsize=options.axes_fontsize)
         else:
             elev_ax.set_ylabel("")
+
+        # Ticks & tick labels
+        elev_ax.tick_params(axis='x',
+                            bottom=options.show_x_ticks,
+                            labelbottom=options.show_x_ticklabels,
+                            labelsize=options.axes_fontsize)
+        elev_ax.tick_params(axis='y',
+                            left=options.show_y_ticks,
+                            labelleft=options.show_y_ticklabels,
+                            labelsize=options.axes_fontsize)
+
 
         # Peak on elevation
         if options.show_peak and np.any(elev_mask):
