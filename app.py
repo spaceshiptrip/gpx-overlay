@@ -49,6 +49,8 @@ with st.sidebar:
     show_peak = st.checkbox("Show peak elevation (elev graph)", value=True)
     show_peak_marker = st.checkbox("Show peak marker (elev graph)", value=True)
     show_peak_text = st.checkbox("Show peak text (elev graph)", value=True)
+    peak_marker_size_elev = st.number_input("Peak marker size (elev)", value=6.0, min_value=1.0, max_value=40.0, step=0.5)
+    peak_marker_color_elev = st.color_picker("Peak marker color (elev)", value="#000000")
 
     st.markdown("---")
 
@@ -57,6 +59,48 @@ with st.sidebar:
     show_track_peak = st.checkbox("Show peak elevation (track)", value=True)
     show_track_peak_marker = st.checkbox("Show peak marker (track)", value=True)
     show_track_peak_text = st.checkbox("Show peak text (track)", value=True)
+    peak_marker_size_track = st.number_input("Peak marker size (track)", value=6.0, min_value=1.0, max_value=40.0, step=0.5)
+    peak_marker_color_track = st.color_picker("Peak marker color (track)", value="#000000")
+
+    st.markdown("---")
+
+    # Line styles
+    st.subheader("Line styles")
+    line_width_track = st.number_input("Track line width", value=3.0, min_value=0.1, max_value=20.0, step=0.1)
+    color_track = st.color_picker("Track line color", value="#000000")
+    style_track = st.selectbox("Track line style", options=["solid", "dashed", "dotted"], index=0)
+    capstyle_track = st.selectbox("Track cap style", options=["butt", "round", "projecting"], index=1)
+    joinstyle_track = st.selectbox("Track join style", options=["miter", "round", "bevel"], index=1)
+
+    line_width_elev = st.number_input("Elevation line width", value=2.0, min_value=0.1, max_value=20.0, step=0.1)
+    color_elev = st.color_picker("Elevation line color", value="#1f77b4")
+    style_elev = st.selectbox("Elevation line style", options=["solid", "dashed", "dotted"], index=0)
+    capstyle_elev = st.selectbox("Elevation cap style", options=["butt", "round", "projecting"], index=1)
+    joinstyle_elev = st.selectbox("Elevation join style", options=["miter", "round", "bevel"], index=1)
+
+    # Glow styles
+    st.subheader("Glow (stroke)")
+    show_glow_track = st.checkbox("Glow on track line", value=False)
+    glow_color_track = st.color_picker("Glow color (track)", value="#FFFFFF")
+    glow_width_track = st.number_input("Glow width (track)", value=6.0, min_value=0.0, max_value=40.0, step=0.5)
+
+    show_glow_elev = st.checkbox("Glow on elevation line", value=False)
+    glow_color_elev = st.color_picker("Glow color (elevation)", value="#FFFFFF")
+    glow_width_elev = st.number_input("Glow width (elevation)", value=6.0, min_value=0.0, max_value=40.0, step=0.5)
+
+    # Shadow styles
+    st.subheader("Drop Shadow")
+    show_shadow_track = st.checkbox("Shadow on track line", value=False)
+    shadow_color_track = st.color_picker("Shadow color (track)", value="#000000")
+    shadow_alpha_track = st.slider("Shadow alpha (track)", min_value=0.0, max_value=1.0, value=0.4, step=0.05)
+    shadow_dx_track = st.number_input("Shadow offset X (px, track)", value=2.0, step=0.5)
+    shadow_dy_track = st.number_input("Shadow offset Y (px, track)", value=-2.0, step=0.5)
+
+    show_shadow_elev = st.checkbox("Shadow on elevation line", value=False)
+    shadow_color_elev = st.color_picker("Shadow color (elevation)", value="#000000")
+    shadow_alpha_elev = st.slider("Shadow alpha (elevation)", min_value=0.0, max_value=1.0, value=0.4, step=0.05)
+    shadow_dx_elev = st.number_input("Shadow offset X (px, elev)", value=2.0, step=0.5)
+    shadow_dy_elev = st.number_input("Shadow offset Y (px, elev)", value=-2.0, step=0.5)
 
     st.markdown("---")
 
@@ -132,11 +176,49 @@ if uploaded is not None:
         show_peak=show_peak,
         show_peak_marker=show_peak_marker,
         show_peak_text=show_peak_text,
+        peak_marker_size_elev=float(peak_marker_size_elev),
+        peak_marker_color_elev=peak_marker_color_elev,
 
         # track peak (gpx map)
         show_track_peak=show_track_peak,
         show_track_peak_marker=show_track_peak_marker,
         show_track_peak_text=show_track_peak_text,
+        peak_marker_size_track=float(peak_marker_size_track),
+        peak_marker_color_track=peak_marker_color_track,
+
+        # line styles
+        line_width_track=float(line_width_track),
+        color_track=color_track,
+        style_track=style_track,
+        capstyle_track=capstyle_track,
+        joinstyle_track=joinstyle_track,
+
+        line_width_elev=float(line_width_elev),
+        color_elev=color_elev,
+        style_elev=style_elev,
+        capstyle_elev=capstyle_elev,
+        joinstyle_elev=joinstyle_elev,
+
+        # glows
+        show_glow_track=show_glow_track,
+        glow_color_track=glow_color_track,
+        glow_width_track=float(glow_width_track),
+        show_glow_elev=show_glow_elev,
+        glow_color_elev=glow_color_elev,
+        glow_width_elev=float(glow_width_elev),
+
+        # shadows
+        show_shadow_track=show_shadow_track,
+        shadow_color_track=shadow_color_track,
+        shadow_alpha_track=float(shadow_alpha_track),
+        shadow_dx_track=float(shadow_dx_track),
+        shadow_dy_track=float(shadow_dy_track),
+
+        show_shadow_elev=show_shadow_elev,
+        shadow_color_elev=shadow_color_elev,
+        shadow_alpha_elev=float(shadow_alpha_elev),
+        shadow_dx_elev=float(shadow_dx_elev),
+        shadow_dy_elev=float(shadow_dy_elev),
 
         # run info block
         show_run_info=show_run_info,
